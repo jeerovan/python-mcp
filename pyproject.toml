@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "python-mcp"
+version = "2.0.0"
+description = "Python Intelligence MCP Server for AI coding agents"
+authors = ["Developer <developer@example.com>"]
+readme = "README.md"
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+mcp = "^1.2.0"
+pydantic = "^2.0.0"
+packaging = "^23.0"
+networkx = "^3.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.0.0"
+pytest-cov = "^4.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = ["src/server.py", "src/utils/env_runner.py", "src/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+]
+

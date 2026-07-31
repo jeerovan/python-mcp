@@ -14,12 +14,34 @@ class EnvironmentInspector:
         if cached is not None:
             return cached
 
-        # If environment is a custom path, determine interpreter / site-packages
+        # Check root folder for venv or .venv if not already active/set
+        root_dir = os.getcwd()
+        local_venv = None
+        for candidate in (".venv", "venv"):
+            candidate_path = os.path.join(root_dir, candidate)
+            if os.path.isdir(candidate_path):
+                # Verify it has bin/python or Scripts/python.exe
+                bin_dir = "Scripts" if platform.system() == "Windows" else "bin"
+                py_name = "python.exe" if platform.system() == "Windows" else "python"
+                if os.path.isfile(os.path.join(candidate_path, bin_dir, py_name)):
+                    local_venv = candidate_path
+                    break
+
+        env_override = environment or os.environ.get("VIRTUAL_ENV") or local_venv
+
         executable = sys.executable
         prefix = sys.prefix
         base_prefix = getattr(sys, "base_prefix", prefix)
-        
-        venv = os.environ.get("VIRTUAL_ENV") or (prefix if prefix != base_prefix else None)
+
+        if local_venv and not os.environ.get("VIRTUAL_ENV") and not environment:
+            bin_dir = "Scripts" if platform.system() == "Windows" else "bin"
+            py_name = "python.exe" if platform.system() == "Windows" else "python"
+            candidate_exec = os.path.join(local_venv, bin_dir, py_name)
+            if os.path.exists(candidate_exec):
+                executable = candidate_exec
+                prefix = local_venv
+
+        venv = env_override or (prefix if prefix != base_prefix else None)
         
         py_env_vars = {k: v for k, v in os.environ.items() if "PYTHON" in k.upper() or k in ("VIRTUAL_ENV", "CONDA_PREFIX")}
 

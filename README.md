@@ -112,7 +112,7 @@ To trigger effective, low-latency Python coding assistance, expose the following
 
 ### Developer provides (required)
 
-1. **Single venv per project.** Activate the project's virtualenv before launching the client. The server reads `sys.executable` and `VIRTUAL_ENV` at startup — a global Python install yields global packages, not the project's. A stale or wrong venv is the most common source of "agent suggested a library that isn't installed."
+1. **Root virtual environment (`.venv` or `venv`).** The server automatically detects a virtual environment folder (`.venv` or `venv`) in the project's root working directory if `VIRTUAL_ENV` is not explicitly set, ensuring project-specific dependencies are inspected correctly.
 2. **Project on `sys.path`.** Either install the project (`pip install -e .`) or set `cwd` to the repo root so `import_path` and `module_info` resolve the project's own modules, not a distractor from site-packages.
 3. **Concrete target.** State the qualified name when possible: `"inspect function src.inspectors.package_inspector.PackageInspector.list_packages"` beats "look at the package code." Dotted paths trigger one tool call; vague prompts trigger broad `search_symbol` scans that return many candidates.
 4. **Version pin.** Tell the agent the target Python version if it differs from the active interpreter (`target: Python 3.10` when venv is 3.14). The server reports the active interpreter, not the deployment target.

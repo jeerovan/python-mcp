@@ -1,3 +1,14 @@
+"""Python Intelligence MCP server.
+
+Exposes Python-environment introspection tools over the Model Context
+Protocol (stdio transport). Run with ``python -m src.server``.
+"""
+import os
+import signal
+import sys
+import threading
+import time
+
 from mcp.server.fastmcp import FastMCP
 from src.inspectors.environment_inspector import EnvironmentInspector
 from src.inspectors.package_inspector import PackageInspector
@@ -105,5 +116,72 @@ def semantic_search(query: str, top_k: int = 5):
     """Semantic search over documentation."""
     return DocumentationInspector.semantic_search(query, top_k)
 
+# --- Lifecycle / graceful shutdown -----------------------------------------
+#
+# The MCP stdio transport blocks on a stdin read that runs inside an anyio
+# worker thread. That read is *not* abandonable on cancellation, so when a
+# termination signal arrives before stdin reaches EOF (e.g. Ctrl-C in a
+# terminal, or a client that signals the process instead of closing the pipe),
+# an ordinary KeyboardInterrupt would wedge the event loop forever.
+#
+# Strategy: on SIGINT/SIGTERM give the normal shutdown path a brief chance to
+# run (which is all that is needed when the peer also closes stdin, and lets
+# pending stdout drain), then force a clean exit so the process can never be
+# left hanging. The environment cache holds no OS resources, so a forced exit
+# is safe here. A second signal exits immediately.
+
+_SHUTDOWN_TIMEOUT = float(os.environ.get("PYTHON_MCP_SHUTDOWN_TIMEOUT", "1.5"))
+_shutdown_started = threading.Event()
+
+
+def _request_shutdown(_signum: int, _frame) -> None:
+    """Signal handler: trigger a clean shutdown, forcing exit if it stalls."""
+    if _shutdown_started.is_set():
+        # A second signal means "exit now".
+        os._exit(0)
+    _shutdown_started.set()
+
+    def _watchdog() -> None:
+        time.sleep(_SHUTDOWN_TIMEOUT)
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except Exception:
+                pass
+        os._exit(0)
+
+    threading.Thread(
+        target=_watchdog, daemon=True, name="mcp-shutdown-watchdog"
+    ).start()
+
+
+def _install_signal_handlers() -> None:
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            signal.signal(sig, _request_shutdown)
+        except (ValueError, OSError):
+            # Signal handlers can only be registered from the main thread.
+            pass
+    if hasattr(signal, "SIGPIPE"):
+        try:
+            signal.signal(signal.SIGPIPE, signal.SIG_IGN)
+        except (ValueError, OSError):
+            pass
+
+
+def main() -> None:
+    _install_signal_handlers()
+    try:
+        mcp.run()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    finally:
+        for stream in (sys.stdout, sys.stderr):
+            try:
+                stream.flush()
+            except Exception:
+                pass
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

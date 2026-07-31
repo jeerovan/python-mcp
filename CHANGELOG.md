@@ -2,6 +2,18 @@
 
 All notable changes documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+- Server now shuts down cleanly on agent exit and termination signals
+  (`SIGINT`/`SIGTERM`). Previously the process could hang forever because the
+  MCP stdio transport blocks on a stdin read inside a non-cancellable anyio
+  worker thread; a termination signal that arrives before stdin reaches EOF
+  wedged the event loop. A main-thread signal handler now gives the normal
+  shutdown path a brief window (configurable via `PYTHON_MCP_SHUTDOWN_TIMEOUT`,
+  default `1.5`s) and force-exits cleanly afterward, so the process can never
+  be left hanging. A second signal exits immediately.
+
 ## [2.0.0] - 2025-07-28
 
 ### Added

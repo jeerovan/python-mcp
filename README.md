@@ -27,21 +27,53 @@ pip install -e .
 python -m src.server
 ```
 
+## Running from Any Location
+
+Once installed with `pip install -e .`, the package is importable from anywhere — no need to `cd` into the repo. The install also creates a `python-mcp` command that runs the server directly:
+
+```bash
+# With the repo's venv active, from any directory:
+python-mcp
+
+# Without activating, using the repo venv's absolute path:
+/home/pi/developement/python-mcp/venv/bin/python-mcp
+/home/pi/developement/python-mcp/venv/bin/python -m src.server
+```
+
+### Using a venv located elsewhere
+
+To run the server from a different virtual environment (e.g. `~/myproject/.venv`), install the package into that venv once. It is a pure-Python, source-installable project, so a `--no-deps` editable install is enough when dependencies are already present:
+
+```bash
+# From the other project's directory:
+~/myproject/.venv/bin/pip install -e /home/pi/developement/python-mcp --no-deps
+
+# Then run it anywhere via that venv:
+~/myproject/.venv/bin/python -m src.server
+# or, once installed with dependencies:
+~/myproject/.venv/bin/python-mcp
+```
+
+If you do not want to install the package, `PYTHONPATH` also works:
+
+```bash
+PYTHONPATH=/home/pi/developement/python-mcp ~/myproject/.venv/bin/python -m src.server
+```
+
 ## Integration with AI Agents
 
 The server speaks the Model Context Protocol over stdio. Any MCP-aware agent is a compatible client. The agent invokes tools automatically when a task warrants environment introspection — but only if the client is configured to spawn this server.
 
 ### Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or the equivalent path on other OSes:
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or the equivalent path on other OSes. Use the venv's absolute interpreter path so the server starts regardless of the client's working directory:
 
 ```json
 {
   "mcpServers": {
     "python-intelligence": {
-      "command": "python",
-      "args": ["-m", "src.server"],
-      "cwd": "/absolute/path/to/python-mcp"
+      "command": "/home/pi/developement/python-mcp/venv/bin/python",
+      "args": ["-m", "src.server"]
     }
   }
 }
@@ -60,9 +92,8 @@ from mcp.client.stdio import stdio_client
 
 async def main():
     params = StdioServerParameters(
-        command="python",
+        command="/home/pi/developement/python-mcp/venv/bin/python",
         args=["-m", "src.server"],
-        cwd="/absolute/path/to/python-mcp",
     )
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
@@ -87,9 +118,8 @@ Add an entry to `.vscode/mcp.json` in the workspace:
   "servers": {
     "python-intelligence": {
       "type": "stdio",
-      "command": "python",
-      "args": ["-m", "src.server"],
-      "cwd": "${workspaceFolder}"
+      "command": "/home/pi/developement/python-mcp/venv/bin/python",
+      "args": ["-m", "src.server"]
     }
   }
 }

@@ -6,11 +6,14 @@ authors = ["Developer <developer@example.com>"]
 readme = "README.md"
 packages = [{ include = "src" }]
 
+[tool.poetry.scripts]
+python-mcp = "src.server:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 mcp = "^1.2.0"
 pydantic = "^2.0.0"
-packaging = "^23.0"
+packaging = ">=23.0"
 networkx = "^3.0"
 
 [tool.poetry.group.dev.dependencies]
